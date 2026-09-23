@@ -21,9 +21,19 @@ import {
   PoolMetrics,
 } from '@/types/monitoring';
 import { ValidationError } from '@/errors';
+import { validateAddress } from '@/utils/validation';
 import { LEDGER_CLOSE_INTERVAL_SECONDS } from '@/utils/ledger';
+import { TreasuryModule, TreasuryModuleOptions } from '@/modules/treasury';
+import { SwapModule } from '@/modules/swap';
+
+const STROOP = 1e7;
+/** Cache TTL for getProtocolMetrics()/getPoolMetrics(), per acceptance criteria. */
+const METRICS_CACHE_TTL_MS = 60_000;
 /** Approximate ledger count for a 24h window, derived from the shared ledger close interval. */
 const LEDGERS_PER_DAY = 86_400 / LEDGER_CLOSE_INTERVAL_SECONDS;
+/**
+ * Max swap events fetched per 24h-window query. getSwapHistory() reads a single
+ * RPC page with no pagination, so pools/protocols with more than this many swaps
  * in 24h will under-count totalSwaps24h/uniqueUsers24h/volume24hUSD.
  */
 const HISTORY_QUERY_LIMIT = 1000;

@@ -36,6 +36,9 @@ describe('ledgerToApproxTime', () => {
     expect(LEDGER_CLOSE_INTERVAL_SECONDS).toBe(5);
   });
 });
+
+describe('waitNextLedger', () => {
+  it('resolves with new ledger when it increments', async () => {
     let ledger = 100;
     const getCurrentLedger = jest.fn().mockImplementation(() => Promise.resolve(ledger));
 

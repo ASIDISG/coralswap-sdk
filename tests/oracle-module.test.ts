@@ -1,4 +1,7 @@
 import { OracleModule, TWAPObservation, MIN_TWAP_WINDOW_SECONDS, MAX_OBSERVATIONS } from '../src/modules/oracle';
+import { CoralSwapClient } from '../src/client';
+import { PRECISION } from '../src/config';
+import { ValidationError, InsufficientLiquidityError } from '../src/errors';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,6 +44,9 @@ function makeObs(
         price0CumulativeLast: p0,
         price1CumulativeLast: p1,
         blockTimestampLast: ts,
+    };
+}
+
 /**
  * Create a mock client whose getCumulativePrices() returns a new timestamp
  * on each call: startTs, startTs + stepSeconds, startTs + 2*stepSeconds, ...
@@ -73,6 +79,9 @@ function createSequentialMockClient(
     } as unknown as CoralSwapClient;
 }
 
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
 
 describe('OracleModule', () => {
     const PAIR = 'PAIR_CONTRACT';
@@ -174,6 +183,11 @@ describe('OracleModule', () => {
             expect(oracle.getObservationCount(PAIR)).toBe(1);
 
             await oracle.observe(PAIR);
+            expect(oracle.getObservationCount(PAIR)).toBe(2);
+        });
+
+        // --- hard cap ---
+
         it('hard cap: cache is bounded at MAX_OBSERVATIONS when all entries are within the minimum window', async () => {
             // 1-second steps → all observations stay within MIN_TWAP_WINDOW_SECONDS (300 s),
             // so window-coverage pruning never fires; the hard cap must engage.
@@ -273,7 +287,12 @@ describe('OracleModule', () => {
                 createSequentialMockClient(0, 60),
             );
             for (let i = 0; i < 4; i++) {
+                await oracle.observe(PAIR);
+            }
             expect(oracle.getObservationCount(PAIR)).toBe(4);
+        });
+
+        it('clearCache() removes observations for a specific pair', async () => {
             const client = createMockClient();
             const oracle = new OracleModule(client);
 

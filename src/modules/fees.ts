@@ -379,7 +379,7 @@ export class FeeModule {
    */
   async getFeeEstimates(
     operations: xdr.Operation[],
-    options: {
+    _options: {
       feeMultiplier?: number;
     } = {},
   ): Promise<FeeEstimates> {
@@ -423,12 +423,9 @@ export class FeeModule {
     let resources = undefined;
     try {
       const sim = await this.client.simulateTransaction(operations, {});
-      if (sim.success && sim.resourceEstimate) {
-        resources = {
-          instructions: sim.resourceEstimate.instructions || 0,
-          readBytes: sim.resourceEstimate.readBytes || 0,
-          writeBytes: sim.resourceEstimate.writeBytes || 0,
-        };
+      if (sim.success && sim.transactionData) {
+        const { instructions, diskReadBytes, writeBytes } = sim.transactionData.resources;
+        resources = { instructions, readBytes: diskReadBytes, writeBytes };
       }
     } catch {
       // Resources not available
@@ -440,7 +437,7 @@ export class FeeModule {
       protocolFeeStroops,
       totalStroops,
       totalXLM,
-      ledger: ledger.sequence || 0,
+      ledger,
       resources,
       breakdown,
     };
@@ -450,7 +447,7 @@ export class FeeModule {
    * Extract the pair address from operations (simplified helper).
    * @private
    */
-  private extractPairAddress(operations: xdr.Operation[]): string | null {
+  private extractPairAddress(_operations: xdr.Operation[]): string | null {
     return null;
   }
 }

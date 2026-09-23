@@ -1,5 +1,5 @@
 import { Fraction } from '../src/utils/math';
-import { getAmountOut, getAmountIn } from '../src/utils/math';
+import { getAmountOut, getAmountIn } from '../src/utils/pair-math';
 
 /**
  * Price reconstruction test suite.
@@ -153,10 +153,17 @@ describe('Price Reconstruction Math', () => {
         const expectedOut = (amountIn * reserveB) / reserveA;
         const expectedOutWithFee = (expectedOut * BigInt(10000 - feeBps)) / 10000n;
 
-        // Should be within 0.1% of expected
-        const diff = Number(amountOut - expectedOutWithFee);
-        const relativeDiff = Math.abs(diff) / Number(expectedOutWithFee);
-        expect(relativeDiff).toBeLessThan(0.001);
+        // The spot estimate above is linear, but a constant-product swap moves
+        // the price as it executes. Swapping 1% of the reserve costs
+        // amountInWithFee / (reserveIn * 10000 + amountInWithFee) of the output,
+        // about 0.99% at this depth, so the linear figure always overstates it.
+        // Assert the direction and the magnitude of that gap instead of
+        // pretending it is under 0.1%.
+        const impact =
+          Number(expectedOutWithFee - amountOut) / Number(expectedOutWithFee);
+        expect(amountOut).toBeLessThan(expectedOutWithFee);
+        expect(impact).toBeGreaterThan(0);
+        expect(impact).toBeLessThan(0.011);
       });
     });
   });

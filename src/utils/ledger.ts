@@ -1,3 +1,5 @@
+import { sleep } from './retry';
+
 /**
  * Nominal Stellar ledger close interval, in seconds.
  *
@@ -46,6 +48,9 @@ export function ledgerToApproxTime(ledger: number, head: LedgerHead): number {
   return head.closeTime + (ledger - head.ledger) * LEDGER_CLOSE_INTERVAL_SECONDS;
 }
 
+export interface WaitNextLedgerOptions {
+  /** Max time to wait for the next ledger (ms). Default 30_000. */
+  timeoutMs?: number;
   /** Interval between RPC polls (ms). Default 2_000. */
   pollIntervalMs?: number;
 }

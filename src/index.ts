@@ -85,9 +85,12 @@ export {
   DCAModule,
   LimitOrderModule,
   SquidModule,
+  BlendModule,
+} from "@/modules";
+export type { OptimalPath } from "@/modules/router";
+export type { TWAPObservation, TWAPResult, TraderRanking, GetTopTradersOptions } from "@/modules";
 export { MIN_TWAP_WINDOW_SECONDS, MAX_OBSERVATIONS } from "@/modules";
 export type { TreasuryModuleOptions, LeaderboardEntry, LeaderboardOptions } from "@/modules";
-export type { FeeEstimates } from "@/types/fee-estimates";
 
 // Utilities
 export {
@@ -136,6 +139,7 @@ export {
   decodeEvents,
   decodeEventsFromXdr,
   EventCursor,
+  TypedEventCursor,
   decodeEventTopic,
   MIN_START_LEDGER,
   batchCall,
@@ -143,14 +147,25 @@ export {
   batchRequest,
   batchRequestOrThrow,
   DEFAULT_BATCH_CONCURRENCY,
+  ConnectionPool,
   ledgerToApproxTime,
   LEDGER_CLOSE_INTERVAL_SECONDS,
+} from './utils';
+
+export type {
   RetryConfig,
   SimulationResult,
+  SimulationResourceEstimate,
+  WaitNextLedgerOptions,
   LedgerHead,
+  DecodeEventsOptions,
+  SimulateFn,
+  BatchRequestOptions,
+  BatchResult,
   TransactionStatus,
   RetryDecision,
   EventCursorOptions,
+  TypedEventScanParams,
 } from "./utils";
 
 // Schema validation

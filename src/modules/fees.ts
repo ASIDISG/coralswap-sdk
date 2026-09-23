@@ -1,6 +1,12 @@
 import { rpc, xdr } from "@stellar/stellar-sdk";
 import { CoralSwapClient } from "@/client";
+import { FeeEstimate } from "@/types/fee";
+import { FeeState } from "@/types/pool";
+import { FeeEstimates } from "@/types/fee-estimates";
+import { estimateGas } from "@/utils/gas";
+import { validateAddress, validatePositiveAmount } from "@/utils/validation";
 import { ledgerToApproxTime, LedgerHead } from "@/utils/ledger";
+
 /**
  * Fee module -- dynamic fee transparency and estimation.
  *
@@ -180,6 +186,10 @@ export class FeeModule {
     }>;
   }> {
     validateAddress(pairAddress, "pairAddress");
+
+    const currentLedger = await this.client.getCurrentLedger();
+    const fromLedger = options.fromLedger ?? Math.max(0, currentLedger - 518400);
+    const toLedger = options.toLedger ?? currentLedger;
     // Reference head for approximating an event's wall-clock time when the RPC
     // response omits `ledgerClosedAt`. The chain head is ~now.
     const head: LedgerHead = {
@@ -187,6 +197,7 @@ export class FeeModule {
       closeTime: Math.floor(Date.now() / 1000),
     };
 
+    const request: rpc.Server.GetEventsRequest = {
       startLedger: fromLedger,
       filters: [
         {
@@ -248,8 +259,14 @@ export class FeeModule {
         const feeAmount = amountIn * feeBps / 10000;
         const feeXLM = feeAmount / 1e7;
         totalFeeXLM += feeXLM;
+        history.push({
+          ledger: event.ledger,
           timestamp:
             Number(event.ledgerClosedAt) || ledgerToApproxTime(event.ledger, head),
+          feeBps,
+          feeXLM,
+        });
+      } catch {
         continue;
       }
     }
@@ -323,15 +340,21 @@ export class FeeModule {
     const currentLedger = await this.client.getCurrentLedger();
     const fromLedger = options.fromLedger ?? Math.max(0, currentLedger - 518400);
     const toLedger = options.toLedger ?? currentLedger;
-    const ledgerSpan = toLedger - fromLedger;
-    const daysInPeriod = (ledgerSpan * 5) / 86400;
-    const aprPercent =
-      daysInPeriod > 0 && lpValueXLM > 0
-        ? (lpFeeShareXLM / lpValueXLM) * (365 / daysInPeriod) * 100
     // Approximate the queried window in seconds via the shared ledger-time
     // helper (the reference close time cancels out of the difference).
     const periodSeconds = ledgerToApproxTime(toLedger, { ledger: fromLedger, closeTime: 0 });
     const daysInPeriod = periodSeconds / 86400;
+    const aprPercent =
+      daysInPeriod > 0 && lpValueXLM > 0
+        ? (lpFeeShareXLM / lpValueXLM) * (365 / daysInPeriod) * 100
+        : 0;
+
+    return {
+      pairAddress,
+      lpAddress,
+      totalFeeRevenueXLM: feeRevenue.totalFeeXLM,
+      lpSharePercent,
+      lpFeeShareXLM,
       lpValueXLM,
       aprPercent,
     };
@@ -356,7 +379,7 @@ export class FeeModule {
    */
   async getFeeEstimates(
     operations: xdr.Operation[],
-    options: {
+    _options: {
       feeMultiplier?: number;
     } = {},
   ): Promise<FeeEstimates> {
@@ -400,12 +423,9 @@ export class FeeModule {
     let resources = undefined;
     try {
       const sim = await this.client.simulateTransaction(operations, {});
-      if (sim.success && sim.resourceEstimate) {
-        resources = {
-          instructions: sim.resourceEstimate.instructions || 0,
-          readBytes: sim.resourceEstimate.readBytes || 0,
-          writeBytes: sim.resourceEstimate.writeBytes || 0,
-        };
+      if (sim.success && sim.transactionData) {
+        const { instructions, diskReadBytes, writeBytes } = sim.transactionData.resources;
+        resources = { instructions, readBytes: diskReadBytes, writeBytes };
       }
     } catch {
       // Resources not available
@@ -417,7 +437,7 @@ export class FeeModule {
       protocolFeeStroops,
       totalStroops,
       totalXLM,
-      ledger: ledger.sequence || 0,
+      ledger,
       resources,
       breakdown,
     };
@@ -427,7 +447,7 @@ export class FeeModule {
    * Extract the pair address from operations (simplified helper).
    * @private
    */
-  private extractPairAddress(operations: xdr.Operation[]): string | null {
+  private extractPairAddress(_operations: xdr.Operation[]): string | null {
     return null;
   }
 }

@@ -687,9 +687,10 @@ export function mapError(err: unknown): CoralSwapSDKError {
 
   // Authentication failures — missing/bad signature, wrong source, etc.
   if (
+    normalizedMessage.includes("auth") ||
     normalizedMessage.includes("badauth") ||
     normalizedMessage.includes("bad auth") ||
-    normalizedMessage.includes("unauthorized") && normalizedMessage.includes("sign")
+    (normalizedMessage.includes("unauthorized") && normalizedMessage.includes("sign"))
   ) {
     return new SignerError();
   }
@@ -701,9 +702,9 @@ export function mapError(err: unknown): CoralSwapSDKError {
     normalizedMessage.includes("resource exhausted") ||
     normalizedMessage.includes("exceeded resource")
   ) {
-    return new RpcError(
+    return new SimulationError(
       `Soroban resource budget exceeded: ${message}`,
-      { sorobanError: message },
+      { reason: 'budget_exceeded', sorobanError: message },
     );
   }
 

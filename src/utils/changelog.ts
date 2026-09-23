@@ -19,9 +19,18 @@ export interface Change {
   type: ChangeType;
   description: string;
 }
+
+/**
+ * A changelog release entry, containing version metadata and change items.
  *
  * `date` is omitted for unreleased entries (e.g. `## [Unreleased]`).
+ */
+export interface ChangelogEntry {
+  version: string;
   date?: string;
+  changes: Change[];
+}
+
 const CHANGE_TYPE_MAP: Record<string, ChangeType> = {
   added: 'added',
   changed: 'changed',
@@ -31,9 +40,16 @@ const CHANGE_TYPE_MAP: Record<string, ChangeType> = {
   security: 'security',
 };
 
+/**
+ * Regex for a Keep a Changelog release header.
+ * Example: `## [1.1.0] - 2026-02-17`
  *
  * The date is optional to support the unreleased header `## [Unreleased]`.
+ */
 const VERSION_HEADER_REGEX = /^##\s*\[([^\]]+)\]\s*(?:-\s*(\d{4}-\d{2}-\d{2}))?\s*$/;
+
+/**
+ * Regex for a section header like `### Added`.
  */
 const SECTION_HEADER_REGEX = /^###\s+(.+?)\s*$/;
 
@@ -122,7 +138,13 @@ export function parseChangelog(content: string): ChangelogEntry[] {
 
     const versionMatch = VERSION_HEADER_REGEX.exec(trimmedLine);
     if (versionMatch) {
+      const [, version, date] = versionMatch;
+      currentEntry = {
+        version: version.trim(),
         date: date ? date.trim() : undefined,
+        changes: [],
+      };
+      entries.push(currentEntry);
       currentType = null;
       continue;
     }

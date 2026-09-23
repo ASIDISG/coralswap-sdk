@@ -1,8 +1,16 @@
+# Changelog
+
 ## [Unreleased]
 
 ### Added
 - CI check requiring a CHANGELOG entry under `[Unreleased]` for PRs that change `src/`
 
+### Fixed
+- Restored source, config, and test files corrupted when #784, #785, #786, #789, #790, and #792 were merged (overwritten code, invalid `package.json` / `package-lock.json`), which left `main` unable to install, compile, or pass CI
+
+## [1.1.0] - 2026-02-17
+
+### Added
 - Pluggable `Signer` interface in `src/types/common.ts` for wallet adapter support
 - `KeypairSigner` default implementation in `src/utils/signer.ts`
 - `signer` option in `CoralSwapConfig` for external wallet integration (Freighter, Albedo)

@@ -6,6 +6,9 @@ import { ValidationError, InsufficientLiquidityError } from "@/errors";
  * Minimum time window (in seconds) for TWAP to resist single-block manipulation.
  * A TWAP computed over a shorter window is not manipulation-resistant and should
  * be rejected or flagged.
+ */
+export const MIN_TWAP_WINDOW_SECONDS = 300; // 5 minutes
+
 /**
  * Hard upper bound on cached observations per pair.
  *
@@ -30,6 +33,9 @@ import { ValidationError, InsufficientLiquidityError } from "@/errors";
  */
 export const MAX_OBSERVATIONS = 500;
 
+/**
+ * TWAP Oracle data point from cumulative price accumulators.
+ */
 export interface TWAPObservation {
   price0CumulativeLast: bigint;
   price1CumulativeLast: bigint;
@@ -104,6 +110,9 @@ export class OracleModule {
     const observation: TWAPObservation = {
       price0CumulativeLast: prices.price0CumulativeLast,
       price1CumulativeLast: prices.price1CumulativeLast,
+      blockTimestampLast: prices.blockTimestampLast,
+    };
+
     // Cache observation for TWAP calculation using dual-pruning policy:
     //
     // Pass 1 — window-coverage pruning:
@@ -115,6 +124,9 @@ export class OracleModule {
     //   If the cache still exceeds MAX_OBSERVATIONS after pass 1, evict from the
     //   front until it fits. This caps memory use for high-frequency pairs whose
     //   entire history is still inside the minimum window.
+    const key = pairAddress;
+    const existing = this.observationCache.get(key) ?? [];
+    existing.push(observation);
 
     const newestTs = existing[existing.length - 1].blockTimestampLast;
 
@@ -127,12 +139,15 @@ export class OracleModule {
       } else {
         break;
       }
+    }
 
     // Pass 2: enforce hard cap as a growth bound
     if (existing.length > MAX_OBSERVATIONS) {
       existing.splice(0, existing.length - MAX_OBSERVATIONS);
     }
+    this.observationCache.set(key, existing);
 
+    return observation;
   }
 
   /**

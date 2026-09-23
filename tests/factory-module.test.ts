@@ -70,6 +70,9 @@ function mockPairClient(opts: {
 function mockLpTokenClient(totalSupply: bigint = 500_000n) {
     return {
         totalSupply: jest.fn().mockResolvedValue(totalSupply),
+    };
+}
+
 describe('FactoryClient and PairClient contract view wrappers', () => {
     it('exposes total pair and fee-state version accessors', async () => {
         const factory = new (require('../src/contracts/factory').FactoryClient)(
@@ -104,6 +107,9 @@ describe('FactoryClient and PairClient contract view wrappers', () => {
     });
 });
 
+// ---------------------------------------------------------------------------
+// Existing cache tests (preserved + migrated to TTL-aware entries)
+// ---------------------------------------------------------------------------
 
 describe('FactoryModule — existing cache behaviour', () => {
     let client: CoralSwapClient;

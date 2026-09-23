@@ -136,6 +136,9 @@ export class FactoryClient {
     const result = await this.simulateRead(op);
     if (!result) return [];
     const vec = result.type === "scvVec" ? result.vec ?? [] : [];
+    return vec.map((v: xdr.ScVal) => Address.fromScVal(v).toString());
+  }
+
   /**
    * Query the total number of registered pairs in the factory.
    *
@@ -180,6 +183,9 @@ export class FactoryClient {
     return 0;
   }
 
+  /**
+   * Query the current fee parameters from factory storage.
+   *
    * @returns Protocol-wide fee configuration including min/max fee bounds,
    *   EMA alpha, and the flash loan fee in basis points.
    * @throws {Error} If the RPC call fails or the response cannot be parsed.

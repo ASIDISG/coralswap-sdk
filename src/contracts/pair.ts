@@ -68,6 +68,9 @@ function scValToU64(val: xdr.ScVal | undefined): number {
   if (val.type !== "scvU64") {
     throw new Error(`Expected u64, got ${val.type}`);
   }
+  return Number(val.u64);
+}
+
 /**
  * Convert an XDR bytes value into a lowercase hex string.
  */
@@ -84,6 +87,9 @@ function scValToBytesHex(val: xdr.ScVal | undefined): string {
   return buffer.toString("hex");
 }
 
+/**
+ * Type-safe client for a CoralSwap Pair contract.
+ *
  * Provides read access to reserves, dynamic fee state, flash loan config,
  * and builds swap/deposit/withdraw transactions.
  */
@@ -185,6 +191,9 @@ export class PairClient {
     const op = this.contract.call("get_dynamic_fee");
     const result = await this.simulateRead(op);
     if (!result) throw new Error("Failed to read dynamic fee");
+    return result.type === "scvU32" ? result.u32 : 30;
+  }
+
   /**
    * Read the pair's WASM hash for the deployed implementation.
    *
@@ -226,6 +235,9 @@ export class PairClient {
     return 0;
   }
 
+  /**
+   * Read the full dynamic fee engine state.
+   *
    * @returns The complete {@link FeeState} including EMA accumulators, min/max bounds,
    *   and the timestamp of the last fee update.
    * @throws {Error} If the RPC call fails or the response cannot be parsed.

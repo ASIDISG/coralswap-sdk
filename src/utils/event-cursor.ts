@@ -1,5 +1,9 @@
+import { xdr, rpc } from "@stellar/stellar-sdk";
+import { ValidationError } from "@/errors";
 import { EventParser } from "./events";
 import { CoralSwapEvent } from "@/types/events";
+
+/**
  * Lowest ledger sequence that can legally be passed as `startLedger`.
  * Ledger 0 does not exist, so anchoring must never clamp below this.
  */
@@ -181,6 +185,54 @@ export class EventCursor {
           {
             type: 'contract',
             contractIds,
+            topics: topics ?? [],
+          },
+        ],
+        limit,
+      } as unknown as rpc.Server.GetEventsRequest;
+
+      const res = await this.server.getEvents(request as any);
+      const events = Array.isArray(res?.events) ? res.events : [];
+      if (events.length === 0) {
+        if (typeof res?.latestLedger === 'number') this.cursor = res.latestLedger;
+        break;
+      }
+
+      allEvents.push(...events as rpc.Api.EventResponse[]);
+
+      const lastEvent = events[events.length - 1] as any;
+      const lastLedger = lastEvent?.ledger ??
+        (typeof res.latestLedger === 'number' ? res.latestLedger : undefined);
+
+      if (lastLedger !== undefined) {
+        pageInfo = {
+          startLedger,
+          endLedger: lastLedger,
+          limit,
+          hasMore: events.length >= limit,
+          nextCursor: typeof res?.cursor === 'string' && res.cursor.length > 0 ? res.cursor : null,
+        };
+      }
+
+      if (lastLedger === undefined) break;
+
+      startLedger = lastLedger + 1;
+      this.cursor = startLedger;
+
+      if (toLedger !== undefined && startLedger > toLedger) break;
+      if (events.length < limit) break;
+    }
+
+    const pagedEvents = allEvents as typeof allEvents & {
+      pageInfo?: typeof pageInfo;
+      truncated?: boolean;
+    };
+    pagedEvents.pageInfo = pageInfo;
+    pagedEvents.truncated = (pageInfo.hasMore ?? false) || allEvents.length >= limit;
+    return pagedEvents;
+  }
+}
+
 /**
  * Per-scan overrides for a {@link TypedEventCursor}. The `contractIds`/`topics`
  * filters are fixed for the lifetime of the cursor (they are the whole point of
@@ -292,48 +344,5 @@ export class TypedEventCursor {
   }
 }
 
-      } as unknown as rpc.Server.GetEventsRequest;
-
-      const res = await this.server.getEvents(request as any);
-      const events = Array.isArray(res?.events) ? res.events : [];
-      if (events.length === 0) {
-        if (typeof res?.latestLedger === 'number') this.cursor = res.latestLedger;
-        break;
-      }
-
-      allEvents.push(...events as rpc.Api.EventResponse[]);
-
-      const lastEvent = events[events.length - 1] as any;
-      const lastLedger = lastEvent?.ledger ??
-        (typeof res.latestLedger === 'number' ? res.latestLedger : undefined);
-
-      if (lastLedger !== undefined) {
-        pageInfo = {
-          startLedger,
-          endLedger: lastLedger,
-          limit,
-          hasMore: events.length >= limit,
-          nextCursor: typeof res?.cursor === 'string' && res.cursor.length > 0 ? res.cursor : null,
-        };
-      }
-
-      if (lastLedger === undefined) break;
-
-      startLedger = lastLedger + 1;
-      this.cursor = startLedger;
-
-      if (toLedger !== undefined && startLedger > toLedger) break;
-      if (events.length < limit) break;
-    }
-
-    const pagedEvents = allEvents as typeof allEvents & {
-      pageInfo?: typeof pageInfo;
-      truncated?: boolean;
-    };
-    pagedEvents.pageInfo = pageInfo;
-    pagedEvents.truncated = (pageInfo.hasMore ?? false) || allEvents.length >= limit;
-    return pagedEvents;
-  }
-}
 
 export default EventCursor;

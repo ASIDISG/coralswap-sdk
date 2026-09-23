@@ -18,8 +18,14 @@ import { KeypairSigner } from '@/utils/signer';
 import { TransactionPoller, PollingStrategy, PollingOptions } from '@/utils/polling';
 import { ConnectionPool } from '@/utils/connection-pool';
 import { buildSimulationResult } from '@/utils/simulation';
+import { RateLimiter } from '@/utils/rate-limiter';
+import { withRetry, RetryOptions, isRetryable } from '@/utils/retry';
+import { TransactionComposer } from '@/transaction-composer';
 import { TypedEventCursor } from '@/utils/event-cursor';
 import { EventCursorOptions } from '@/utils/event-cursor';
+export { KeypairSigner, PollingStrategy, PollingOptions };
+
+/**
  * Default signer implementation that wraps a Stellar Keypair.
  *
  * Used internally when the client is constructed with a secret key string
@@ -299,6 +305,9 @@ export class CoralSwapClient {
    * Create a transaction composer for atomic multi-operation transactions.
    */
   transactionComposer(): TransactionComposer {
+    return new TransactionComposer(this);
+  }
+
   /**
    * Open a single, filtered, cursor-pagination-aware stream of typed events
    * for a contract.
@@ -331,6 +340,8 @@ export class CoralSwapClient {
     return new TypedEventCursor(this.server, contractId, filters, options);
   }
 
+  /**
+   * Switch the client to a different network.
    *
    * @param network - The target network.
    * @param rpcUrl - Optional override for the RPC URL.

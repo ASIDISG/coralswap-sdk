@@ -89,6 +89,9 @@ describe('Changelog Parser', () => {
 -   
 `;
 
+    expect(() => parseChangelog(invalidChangelog)).toThrow('missing bullet description');
+  });
+
   it('parses an [Unreleased] entry without a date', () => {
     const content = `# Changelog
 
@@ -124,3 +127,4 @@ describe('Changelog Parser', () => {
 
     expect(() => parseChangelog(invalidChangelog)).toThrow('invalid version header');
   });
+});

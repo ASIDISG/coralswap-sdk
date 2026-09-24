@@ -20,6 +20,7 @@ import { ConnectionPool } from '@/utils/connection-pool';
 import { buildSimulationResult } from '@/utils/simulation';
 import { RateLimiter } from '@/utils/rate-limiter';
 import { withRetry, RetryOptions, isRetryable } from '@/utils/retry';
+import { validateRpcUrls, getRpcUrlScheme } from '@/utils/rpc-url';
 import { TransactionComposer } from '@/transaction-composer';
 import { TypedEventCursor } from '@/utils/event-cursor';
 import { EventCursorOptions } from '@/utils/event-cursor';
@@ -145,9 +146,13 @@ export class CoralSwapClient {
    * @private
    */
   private createRpcServer(url: string): rpc.Server {
+    // Cleartext (http/ws) and wss endpoints must opt in to `allowHttp` --
+    // stellar-sdk otherwise throws for anything that is not https.
+    const scheme = getRpcUrlScheme(url);
     const options: Record<string, unknown> = {
       headers: this.config.rpcHeaders,
       ...this.config.fetchOptions,
+      allowHttp: scheme !== 'https',
     };
     return new rpc.Server(url, options);
   }
@@ -185,6 +190,9 @@ export class CoralSwapClient {
     } else {
       this._rpcUrls = [this.networkConfig.rpcUrl];
     }
+
+    // Reject cleartext / invalid RPC endpoints before anything can be sent.
+    validateRpcUrls(this._rpcUrls, this.network);
 
     // Keep networkConfig.rpcUrl in sync with the active RPC URL
     this.networkConfig.rpcUrl = this._rpcUrls[0];
@@ -364,6 +372,9 @@ export class CoralSwapClient {
     } else {
       this._rpcUrls = [this.networkConfig.rpcUrl];
     }
+
+    // Reject cleartext / invalid RPC endpoints before anything can be sent.
+    validateRpcUrls(this._rpcUrls, network);
 
     // Keep networkConfig.rpcUrl in sync with the active RPC URL
     this.networkConfig.rpcUrl = this._rpcUrls[0];

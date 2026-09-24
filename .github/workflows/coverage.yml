@@ -55,8 +55,7 @@ jobs:
               B=$(node -e "const s=require('./$SUMMARY_FILE'); const m=s['$mod']; console.log(m.branches.pct)")
               F=$(node -e "const s=require('./$SUMMARY_FILE'); const m=s['$mod']; console.log(m.functions.pct)")
               L=$(node -e "const s=require('./$SUMMARY_FILE'); const m=s['$mod']; console.log(m.lines.pct)")
-              MODULE_ROWS="${MODULE_ROWS}| \`${mod}\` | ${S}% | ${B}% | ${F}% | ${L}% |
-"
+              MODULE_ROWS="${MODULE_ROWS}| \`${mod}\` | ${S}% | ${B}% | ${F}% | ${L}% |"$'\n'
             fi
           done
 
@@ -90,6 +89,10 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Comment coverage on PR
+        # Posting the comment is a convenience, not a gate. It calls the GitHub
+        # API, which can 403 on the installation's hourly limit during a busy
+        # merge run, and a failed comment must not fail the coverage check.
+        continue-on-error: true
         if: always() && steps.coverage.outputs.summary != ''
         uses: actions/github-script@v7
         with:
